@@ -95,7 +95,7 @@ export function activeQuestion(game) {
 
 export function castVote(game, playerId, choice, now = Date.now()) {
   if (game.phase !== PHASES.VOTING || now >= game.deadline) return game;
-  if (!["a", "b"].includes(choice) || !(game.players.some(p => p.id === playerId))) return game;
+  if (!["a", "b", "c"].includes(choice) || !(game.players.some(p => p.id === playerId))) return game;
   if (Object.hasOwn(game.votes, playerId)) return game;
   return { ...game, votes: { ...game.votes, [playerId]: choice } };
 }
@@ -105,7 +105,11 @@ function reveal(game, now) {
   const votes = Object.entries(game.votes).map(([playerId, choice]) => ({ playerId, choice }));
   const countA = votes.filter(v => v.choice === "a").length;
   const countB = votes.filter(v => v.choice === "b").length;
-  const majority = countA === countB ? null : countA > countB ? "a" : "b";
+  const countC = votes.filter(v => v.choice === "c").length;
+  const counts = question.type === "wild" ? { a: countA, b: countB, c: countC } : { a: countA, b: countB };
+  const maxCount = Math.max(...Object.values(counts));
+  const leaders = Object.keys(counts).filter(choice => counts[choice] === maxCount);
+  const majority = leaders.length === 1 ? leaders[0] : null;
   const players = game.players.map(player => {
     const choice = game.votes[player.id];
     const points = awardPoints(choice, votes, question.basePoints);
@@ -129,6 +133,8 @@ function reveal(game, now) {
       questionId: question.question.id,
       a: countA,
       b: countB,
+      c: countC,
+      percentageC: votes.length ? Math.round(countC * 100 / votes.length) : 0,
       percentageA: votes.length ? Math.round(countA * 100 / votes.length) : 0,
       percentageB: votes.length ? Math.round(countB * 100 / votes.length) : 0,
       majority,
